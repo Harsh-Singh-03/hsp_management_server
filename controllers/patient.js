@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs')
 const Patient = require('../modals/patient');
-const jwt = require('jsonwebtoken')
+const jwt = require('jsonwebtoken');
+const patient_repo = require('../repos/patient.repo');
 require('dotenv/config')
 
 class patientContoller {
@@ -97,8 +98,7 @@ class patientContoller {
             return res.status(500).send({ success: false, data: {}, message: error.message });
         }
     }
-
-    
+  
     async deletePatient(req, res) {
         try {
             const deletedPatient = await Patient.findByIdAndUpdate(req.params.id, {isDeleted: true});
@@ -110,6 +110,19 @@ class patientContoller {
             res.status(500).send({ success: false, message: e.message })
         }
     }
+
+    async analytics (req, res) {
+        try {
+            const analytics = await patient_repo.get_analytics(req)
+            if(!analytics){
+                return res.status(500).send({ success: false, message: "Patient analytics not available" })
+            }
+            res.send({ success: true, message: 'Analytics fetched successfully', data: analytics || {} });
+        } catch (error) {
+            res.status(500).send({ success: false, message: error.message })
+        }
+    }
+
     // async login(req, res) {
     //     try {
     //         if (!_.has(req.body, 'email')) {

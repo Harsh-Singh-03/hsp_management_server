@@ -19,12 +19,19 @@ router.post('/admin/appointment/create', checkAuth.admin, appointment.newAppoint
 router.post('/admin/appointment/list', checkAuth.admin, appointment.appointment_list)
 router.get('/admin/appointment/detail/:id', checkAuth.admin, appointment.appointment_details)
 router.put('/admin/appointment/update/:id', checkAuth.admin, appointment.appointment_update)
+
+router.get('/admin/overview_count', checkAuth.admin, admin.adminOverview)
 router.post('/admin/validate', checkAuth.admin, (req, res) => {
     res.status(200).json({
         message: `Welcome ${req.user.name}`,
         success: true,
         data: req.user
     })
+})
+
+router.post('/admin/sign-out', async (req, res, next) =>{
+    res.clearCookie('authtoken');
+    res.status(200).json({success: true, message: "Successfully Log Out"})
 })
 
 module.exports = router

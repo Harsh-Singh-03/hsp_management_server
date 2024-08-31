@@ -4,6 +4,7 @@ const Admin = require('../modals/admin');
 const doctors_repo = require('../repos/doctors.repo');
 const patient_repo = require('../repos/patient.repo');
 const Patient = require('../modals/patient');
+const admin_repo = require('../repos/admin_repo');
 require('dotenv/config')
 
 class adminController {
@@ -120,6 +121,20 @@ class adminController {
             }
         } catch (e) {
           res.status(500).send({ success: false, message: e.message });  
+        }
+    }
+
+    async adminOverview (req, res) {
+        try {
+            const data = await admin_repo.getOverview(req)
+            if(data){
+                res.send({success: true, message: 'Admin Overview', data: data});
+            }else{
+                res.send({success: false, message: 'Admin Overview not found', data: {}});
+            }
+        } catch (error) {
+            console.log(error)
+            res.status(500).send({ success: false, message: error.message });
         }
     }
 

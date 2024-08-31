@@ -6,7 +6,7 @@ const router = express.Router()
 
 router.post('/department/create', checkAuth.admin, department.create)
 
-router.post('/department/list', checkAuth.admin, department.list)
+router.post('/department/list', department.list)
 
 router.put('/department/update/:id', checkAuth.admin, department.update)
 
