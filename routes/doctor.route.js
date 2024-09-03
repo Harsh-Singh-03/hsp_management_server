@@ -22,4 +22,10 @@ router.post('/doctor/validate', checkAuth.doctor, (req, res) => {
     })
 })
 
+router.post('/doctor/sign-out', async (req, res, next) =>{
+    res.clearCookie('doctor_token');
+    res.status(200).json({success: true, message: "Successfully Log Out"})
+})
+
+
 module.exports = router
