@@ -7,6 +7,7 @@ const DoctorSchema = new mongoose.Schema({
     email: { type: String, required: [true, 'email required'], unique: true },
     password: { type: String, required: [true, 'password required'] },
     phone: { type: String, required: [true, 'phone required'], unique: true },
+    forget_pass_token: { type: String, default: null },
     specialization: { 
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Department',

@@ -19,6 +19,8 @@ router.post('/admin/appointment/create', checkAuth.admin, appointment.newAppoint
 router.post('/admin/appointment/list', checkAuth.admin, appointment.appointment_list)
 router.get('/admin/appointment/detail/:id', checkAuth.admin, appointment.appointment_details)
 router.put('/admin/appointment/update/:id', checkAuth.admin, appointment.appointment_update)
+router.post('/admin/forget-password', admin.forgetPassword);
+router.post('/admin/new-password', admin.newPassword);
 
 router.get('/admin/overview_count', checkAuth.admin, admin.adminOverview)
 router.post('/admin/validate', checkAuth.admin, (req, res) => {

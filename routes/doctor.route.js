@@ -8,6 +8,8 @@ router.get('/doctor/analytics', checkAuth.doctor, doctor.analytics)
 router.post('/doctor/register', doctor.registration)
 router.post('/doctor/profile/update', checkAuth.doctor, doctor.updateDoctor)
 router.post('/doctor/login', doctor.login)
+router.post('/doctor/forget-password', doctor.forgetPassword);
+router.post('/doctor/new-password', doctor.newPassword);
 router.post('/doctor/appointment/list', checkAuth.doctor, appointment.appointment_list)
 router.put('/doctor/appointment/update/:id', checkAuth.doctor, appointment.appointment_update)
 router.get('/doctor/appointment/detail/:id', checkAuth.doctor, appointment.appointment_details)

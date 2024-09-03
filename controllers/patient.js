@@ -2,6 +2,9 @@ const bcrypt = require('bcryptjs')
 const Patient = require('../modals/patient');
 const jwt = require('jsonwebtoken');
 const patient_repo = require('../repos/patient.repo');
+const crypto = require('crypto');
+const mail_template = require('../utilities/mail-template');
+const sendEmail = require('../utilities/mail');
 require('dotenv/config')
 
 class patientContoller {
@@ -123,7 +126,56 @@ class patientContoller {
         }
     }
 
-    // async login(req, res) {
+    async forgetPassword(req, res) {
+        try {
+            let user = await Patient.findOne({ email: req.body.email });
+            if (!user) {
+                return res.status(404).send({ success: false, message: 'User Not Found' });
+            }
+
+            const token = crypto.randomBytes(32).toString("hex")
+            const newUserData = { forget_pass_token: token }
+            await Patient.findByIdAndUpdate(user._id, newUserData, { new: true });
+
+            const redirect_url = req.body.redirect || process.env.DOMAIN
+
+            const url = `${redirect_url}/new-pass/patient/${user._id}/${token}`
+
+            const emailContent = mail_template.forget_pass(user, url);
+
+            const isSend = await sendEmail(user.email, "Forget Password", emailContent)
+
+            if (isSend) {
+                res.status(200).json({ success: true, message: "Email Sent" });
+            } else {
+                res.status(400).json({ success: false, message: "Failed to Send Email" });
+            }
+        } catch (e) {
+            res.status(500).send({ message: e.message, success: false });
+        }
+    };
+
+    async newPassword(req, res) {
+        try {
+            let password = req.body.password;
+            const userInfo = await Patient.findOne({ _id: req.body.id, forget_pass_token: req.body.token });
+            if (_.isEmpty(userInfo) || !userInfo._id) {
+                return res.status(404).send({ success: false, message: 'User Not Found' });
+            } else {
+                let hashedPassword = bcrypt.hashSync(password, 10);
+                let updatedUser = await Patient.findByIdAndUpdate(userInfo._id, { password: hashedPassword, forget_pass_token: '' }, { new: true });
+                if (!_.isEmpty(updatedUser) && updatedUser._id) {
+                    res.status(200).send({ success: true, data: updatedUser, message: 'Password Updated Successfully' });
+                }
+                else {
+                    res.status(400).send({ success: false, message: 'Password could not be updated' });
+                }
+            }
+        } catch (e) {
+            res.status(500).send({ message: e.message, success: false });
+        }
+    }
+
     //     try {
     //         if (!_.has(req.body, 'email')) {
     //             res.status(400).send({ success: false, data: {}, message: 'Email is required' });
@@ -168,35 +220,7 @@ class patientContoller {
     //     }
     // };
 
-    // async forgetPassword(req, res) {
-    //     try {
-    //         const transporter = nodemailer.createTransport({
-    //             service: "gmail",
-    //             auth: {
-    //                 user: process.env.NODEMAILER_USER,
-    //                 pass: process.env.PASSWORD
-    //             }
-    //         });
-
-    //         const mailOptions = {
-    //             from: process.env.FROM,
-    //             to: req.body.email,
-    //             subject: "Forget Password",
-    //             html: `<h1>Your Password Reset Link - http://13.201.212.185:4200/</h1> <br />`,
-    //         }
-
-    //         transporter.sendMail(mailOptions, (error, info) => {
-    //             if (error) {
-    //                 console.log(error);
-    //             } else {
-    //                 res.status(201).send({ success: true, message: "Password Update Link Sent To Your Email", info })
-    //                 console.log(info.response)
-    //             }
-    //         });
-    //     } catch (e) {
-    //         res.status(500).send({ status: 500, message: e.message });
-    //     }
-    // };
+   
 
     // async updateProfile(req, res) {
     //     try {

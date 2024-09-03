@@ -2,6 +2,9 @@ const bcrypt = require('bcryptjs')
 const Doctor = require('../modals/doctor');
 const jwt = require('jsonwebtoken');
 const doctors_repo = require('../repos/doctors.repo');
+const mail_template = require('../utilities/mail-template');
+const sendEmail = require('../utilities/mail');
+const crypto = require('crypto');
 require('dotenv/config')
 
 class doctorContoller {
@@ -135,6 +138,56 @@ class doctorContoller {
             }
         } catch (err) {
             res.status(500).send({ success: false, data: {}, message: err?.message })
+        }
+    }
+
+    async forgetPassword(req, res) {
+        try {
+            let user = await Doctor.findOne({ email: req.body.email });
+            if (!user) {
+                return res.status(404).send({ success: false, message: 'User Not Found' });
+            }
+
+            const token = crypto.randomBytes(32).toString("hex")
+            const newUserData = { forget_pass_token: token }
+            await Doctor.findByIdAndUpdate(user._id, newUserData, { new: true });
+
+            const redirect_url = req.body.redirect || process.env.DOMAIN
+
+            const url = `${redirect_url}/new-pass/doctor/${user._id}/${token}`
+
+            const emailContent = mail_template.forget_pass(user, url);
+
+            const isSend = await sendEmail(user.email, "Forget Password", emailContent)
+
+            if (isSend) {
+                res.status(200).json({ success: true, message: "Email Sent" });
+            } else {
+                res.status(400).json({ success: false, message: "Failed to Send Email" });
+            }
+        } catch (e) {
+            res.status(500).send({ message: e.message, success: false });
+        }
+    };
+
+    async newPassword(req, res) {
+        try {
+            let password = req.body.password;
+            const userInfo = await Doctor.findOne({ _id: req.body.id, forget_pass_token: req.body.token });
+            if (_.isEmpty(userInfo) || !userInfo._id) {
+                return res.status(404).send({ success: false, message: 'User Not Found' });
+            } else {
+                let hashedPassword = bcrypt.hashSync(password, 10);
+                let updatedUser = await Doctor.findByIdAndUpdate(userInfo._id, { password: hashedPassword, forget_pass_token: '' }, { new: true });
+                if (!_.isEmpty(updatedUser) && updatedUser._id) {
+                    res.status(200).send({ success: true, data: updatedUser, message: 'Password Updated Successfully' });
+                }
+                else {
+                    res.status(400).send({ success: false, message: 'Password could not be updated' });
+                }
+            }
+        } catch (e) {
+            res.status(500).send({ message: e.message, success: false });
         }
     }
 
