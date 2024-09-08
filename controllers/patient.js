@@ -5,6 +5,7 @@ const patient_repo = require('../repos/patient.repo');
 const crypto = require('crypto');
 const mail_template = require('../utilities/mail-template');
 const sendEmail = require('../utilities/mail');
+const cloudinary = require("cloudinary")
 require('dotenv/config')
 
 class patientContoller {
@@ -44,9 +45,31 @@ class patientContoller {
                     const salt = await bcrypt.genSalt(10)
                     const securePass = await bcrypt.hash(req.body.password, salt);
                     req.body.password = securePass;
+                    if(req?.user?.role === 'admin'){
+                        req.body.isEmailVerified = true
+                    }
                     let saveUser = await Patient.create(req.body);
                     if (!_.isEmpty(saveUser)) {
-                        res.status(200).send({ success: true, message: 'Patient Registration Successful', data: saveUser });
+                        if(!saveUser.isEmailVerified) {
+                            const token = crypto.randomBytes(32).toString("hex")
+                            saveUser.email_verification_token = token
+                            await saveUser.save()
+    
+                            const redirect_url = req.body.redirect || process.env.DOMAIN
+                
+                            const url = `${redirect_url}/verify-email/patient/${saveUser._id}/${token}`
+                            console.log(url)
+                            const emailContent = mail_template.email_verification(saveUser, url);
+                
+                            const isSend = await sendEmail(saveUser.email, "Email Verification", emailContent)
+                            if(isSend){
+                                res.status(200).send({ success: true, message: 'Verification email sent successfully. Please check your inbox.' });
+                            }else{
+                                res.status(500).send({ success: false, message: 'Failed to send verification email' });
+                            }
+                        }else {
+                            res.status(200).send({ success: true, message: 'Patient Registration Successful', data: saveUser });
+                        }
                     }
                     else {
                         res.status(400).send({ success: false, data: {}, message: 'Patient Registration Unsuccessful' });
@@ -61,19 +84,19 @@ class patientContoller {
     async login(req, res) {
         try {
             const { email, password } = req.body;
-            if(!email){
-                return res.status(400).send({success: false, data: {}, message: 'Invalid email'})
+            if (!email) {
+                return res.status(400).send({ success: false, data: {}, message: 'Invalid email' })
             }
-            if(!password){
-                return res.status(400).send({success: false, data: {}, message: 'Invalid password'})
+            if (!password) {
+                return res.status(400).send({ success: false, data: {}, message: 'Invalid password' })
             }
-            let user = await Patient.findOne({ email, isDeleted: {$ne: true} })
+            let user = await Patient.findOne({ email, isDeleted: { $ne: true } })
             if (_.isEmpty(user) || !user) {
-                return res.status(404).send({success: false, data: {}, message: "email is not registered"})
+                return res.status(404).send({ success: false, data: {}, message: "email is not registered" })
             }
             const passCompare = await bcrypt.compare(password, user.password)
             if (!passCompare) {
-                return res.status(400).send({success: false, data: {}, message: "Invalid password"})
+                return res.status(400).send({ success: false, data: {}, message: "Invalid password" })
             }
 
             const data = {
@@ -83,7 +106,7 @@ class patientContoller {
             }
 
             const authToken = jwt.sign(data, process.env.JWT_SIGN);
-            
+
             res.cookie(`patient_token`, `${authToken}`, {
                 maxAge: Math.floor((Date.now() / 1000) + (60 * 86400) * 1000),
                 secure: true,
@@ -92,7 +115,7 @@ class patientContoller {
                 path: "/",
             });
 
-            res.status(200).json({ 
+            res.status(200).json({
                 success: true,
                 message: "Welcome " + user.name
             })
@@ -101,27 +124,28 @@ class patientContoller {
             return res.status(500).send({ success: false, data: {}, message: error.message });
         }
     }
-  
+
     async deletePatient(req, res) {
         try {
-            const deletedPatient = await Patient.findByIdAndUpdate(req.params.id, {isDeleted: true});
-            if(!deletedPatient){
-                return res.status(500).send({success: false, message: 'Failed to delete patient'})
+            const deletedPatient = await Patient.findByIdAndUpdate(req.params.id, { isDeleted: true });
+            if (!deletedPatient) {
+                return res.status(500).send({ success: false, message: 'Failed to delete patient' })
             }
-            res.send({success: true, message: 'Patient deleted successfully', data: deletedPatient})
+            res.send({ success: true, message: 'Patient deleted successfully', data: deletedPatient })
         } catch (e) {
             res.status(500).send({ success: false, message: e.message })
         }
     }
 
-    async analytics (req, res) {
+    async analytics(req, res) {
         try {
             const analytics = await patient_repo.get_analytics(req)
-            if(!analytics){
-                return res.status(500).send({ success: false, message: "Patient analytics not available" })
+            if (!analytics) {
+                return res.status(404).send({ success: false, message: "Patient analytics not available" })
             }
             res.send({ success: true, message: 'Analytics fetched successfully', data: analytics || {} });
         } catch (error) {
+            console.log(error)
             res.status(500).send({ success: false, message: error.message })
         }
     }
@@ -176,6 +200,82 @@ class patientContoller {
         }
     }
 
+    async updateProfile(req, res) {
+        try {
+            let updateUser = await Patient.findByIdAndUpdate(req.user._id, req.body, { $new: true, $upsert: true }).exec()
+            if (!_.isEmpty(updateUser) && updateUser._id) {
+                res.status(200).send({ success: true, data: updateUser, message: 'Profile details updated successfully' });
+            }
+            else {
+                res.status(400).send({ success: false, data: {}, message: 'Profile details could not be updated' });
+            }
+        } catch (e) {
+            res.status(500).send({ success: false, message: e.message });
+        }
+    };
+
+    async changePassword(req, res) {
+        try {
+            let userInfo = await Patient.findById(req.user._id);
+            if (!bcrypt.compare(req.body.password, userInfo.password)) {
+                res.status(400).send({ success: false, message: 'Wrong Current Password' });
+            }
+            const salt = await bcrypt.genSalt(10)
+            const securePass = await bcrypt.hash(req.body.new_password, salt);
+
+            let updatePassword = await Patient.findByIdAndUpdate(req.user._id, { password: securePass });
+            if (!_.isEmpty(updatePassword)) {
+                res.status(200).send({ success: true, data: updatePassword, message: 'Password updated successfully' });
+            }
+            else {
+                res.status(400).send({ success: false, message: 'Password could not be updated' });
+            }
+        } catch (e) {
+            res.status(500).send({ success: false, message: e.message });
+        }
+    };
+
+    async email_verify_req(req, res){
+        try {
+            const saveUser = await Patient.findById(req.user._id)
+            const token = crypto.randomBytes(32).toString("hex")
+            saveUser.email_verification_token = token
+            await saveUser.save()
+
+            const redirect_url = req.body.redirect || process.env.DOMAIN
+
+            const url = `${redirect_url}/verify-email/patient/${saveUser._id}/${token}`
+
+            const emailContent = mail_template.email_verification(saveUser, url);
+
+            const isSend = await sendEmail(saveUser.email, "Email Verification", emailContent)
+            if(isSend){
+                res.status(200).send({ success: true, message: 'Verification email sent successfully. Please check your inbox.' });
+            }else{
+                res.status(500).send({ success: false, message: 'Failed to send verification email' });
+            }
+        } catch (error) {
+            res.status(500).send({ success: false, message: error.message });
+        }
+    }
+    async verify_email(req, res) {
+        try {
+            const userInfo = await Patient.findOne({ _id: req.body.id, email_verification_token: req.body.token });
+            if(!_.isEmpty(userInfo) && userInfo._id){
+                userInfo.isEmailVerified = true;
+                userInfo.email_verification_token = null;
+                await userInfo.save()
+                res.status(200).send({success: true, message: 'Email verified successfully'});
+            }else{
+                res.status(404).send({ success: false, message: 'User Not Found' });
+            }
+        } catch (error) {
+            res.status(500).send({ success: false, message: 'Error while verifying' })
+        }
+    }
+
+
+
     //     try {
     //         if (!_.has(req.body, 'email')) {
     //             res.status(400).send({ success: false, data: {}, message: 'Email is required' });
@@ -214,51 +314,6 @@ class patientContoller {
     //         }
     //         else {
     //             res.status(400).send({ success: false, message: 'User not found' });
-    //         }
-    //     } catch (e) {
-    //         res.status(500).send({ status: 500, message: e.message });
-    //     }
-    // };
-
-   
-
-    // async updateProfile(req, res) {
-    //     try {
-    //         let userInfo = await User.findById(req.user._id);
-
-    //         if (req.files && req.files.length > 0) {
-    //             const uploadResult = await cloudinary.v2.uploader.upload(req.files[0].path);
-    //             req.body.image = uploadResult.secure_url;
-    //         }
-    //         else {
-    //             req.body.image = userInfo.image;
-    //         }
-
-    //         let updateUser = await userRepo.updateById(req.body, req.user._id);
-    //         if (!_.isEmpty(updateUser) && updateUser._id) {
-    //             res.status(200).send({ status: 200, data: updateUser, message: 'Profile details updated successfully' });
-    //         }
-    //         else {
-    //             res.status(400).send({ success: false, data: {}, message: 'Profile details could not be updated' });
-    //         }
-    //     } catch (e) {
-    //         res.status(500).send({ status: 500, message: e.message });
-    //     }
-    // };
-
-    // async changePassword(req, res) {
-    //     try {
-    //         let userInfo = await User.findById(req.user._id);
-    //         if (!bcrypt.compareSync(req.body.currentPassword, userInfo.password)) {
-    //             res.status(400).send({ success: false, message: 'Wrong Current Password' });
-    //         }
-    //         req.body.password = userInfo.generateHash(req.body.newPassword);
-    //         let updatePassword = await userRepo.updateById(req.body, req.user._id);
-    //         if (!_.isEmpty(updatePassword)) {
-    //             res.status(200).send({ status: 200, data: updatePassword, message: 'Password updated successfully' });
-    //         }
-    //         else {
-    //             res.status(400).send({ success: false, message: 'Password could not be updated' });
     //         }
     //     } catch (e) {
     //         res.status(500).send({ status: 500, message: e.message });

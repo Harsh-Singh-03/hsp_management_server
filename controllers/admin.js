@@ -151,6 +151,27 @@ class adminController {
         }
     }
 
+    async changePassword(req, res) {
+        try {
+            let userInfo = await Admin.findById(req.user._id);
+            if (!bcrypt.compare(req.body.password, userInfo.password)) {
+                res.status(400).send({ success: false, message: 'Wrong Current Password' });
+            }
+            const salt = await bcrypt.genSalt(10)
+            const securePass = await bcrypt.hash(req.body.new_password, salt);
+
+            let updatePassword = await Admin.findByIdAndUpdate(req.user._id, { password: securePass });
+            if (!_.isEmpty(updatePassword)) {
+                res.status(200).send({ success: true, data: updatePassword, message: 'Password updated successfully' });
+            }
+            else {
+                res.status(400).send({ success: false, message: 'Password could not be updated' });
+            }
+        } catch (e) {
+            res.status(500).send({ success: false, message: e.message });
+        }
+    };
+
     async doctorsList(req, res) {
         try {
             const doctors_list = await doctors_repo.list(req)
@@ -188,6 +209,45 @@ class adminController {
         } catch (error) {
             console.log(error)
             res.status(500).send({ success: false, message: error.message });
+        }
+    }
+
+    async adminDepartmentAnalytics(req, res) {
+        try {
+            const data = await admin_repo.department_analytics(req);
+            if(data && data.length > 0) {
+                res.send({success: true, message: 'Department Analytics', data: data});
+            } else{
+                res.send({success: false, message: 'Department Analytics not found', data: []});
+            }
+        } catch (error) {
+            return res.status(500).send({ success: false, message: error.message });
+        }
+    }
+
+    async adminPatientAnalytics(req, res) {
+        try {
+            const data = await admin_repo.patient_analytics(req);
+            if(data && data.length > 0) {
+                res.send({success: true, message: 'Patient Analytics', data: data});
+            } else{
+                res.send({success: false, message: 'Patient Analytics not found', data: []});
+            }
+        } catch (error) {
+            return res.status(500).send({ success: false, message: error.message });
+        }
+    }
+
+    async adminAppointmentAnalytics(req, res) {
+        try {
+            const data = await admin_repo.appointment_analytics(req);
+            if(data && data.length > 0) {
+                res.send({success: true, message: 'Appointment Analytics', data: data});
+            } else{
+                res.send({success: false, message: 'Appointment Analytics not found', data: []});
+            }
+        } catch (error) {
+            return res.status(500).send({ success: false, message: error.message });
         }
     }
 

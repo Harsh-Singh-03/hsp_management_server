@@ -4,6 +4,7 @@ const checkAuth = require('../utilities/auth');
 const doctor = require('../controllers/doctor');
 const patient_controller = require('../controllers/patient');
 const appointment = require('../controllers/appointment');
+const support = require('../controllers/support');
 const router = express.Router()
 
 router.post('/admin/register', admin.registration)
@@ -21,8 +22,14 @@ router.get('/admin/appointment/detail/:id', checkAuth.admin, appointment.appoint
 router.put('/admin/appointment/update/:id', checkAuth.admin, appointment.appointment_update)
 router.post('/admin/forget-password', admin.forgetPassword);
 router.post('/admin/new-password', admin.newPassword);
+router.post('/admin/reset-password', checkAuth.admin, admin.changePassword);
+router.post('/support/list', checkAuth.admin, support.list)
+router.post('/admin/doctor/reviews', checkAuth.admin, doctor.reviewList)
 
 router.get('/admin/overview_count', checkAuth.admin, admin.adminOverview)
+router.post('/admin/department/analytics', checkAuth.admin, admin.adminDepartmentAnalytics)
+router.post('/admin/patient/analytics', checkAuth.admin, admin.adminPatientAnalytics)
+router.post('/admin/appointment/analytics', checkAuth.admin, admin.adminAppointmentAnalytics)
 router.post('/admin/validate', checkAuth.admin, (req, res) => {
     res.status(200).json({
         message: `Welcome ${req.user.name}`,

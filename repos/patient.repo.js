@@ -141,6 +141,7 @@ const patient_repo = {
             ]);
             return analytics[0];
         } catch (error) {
+            console.log(error)
             throw error;
         }
     }

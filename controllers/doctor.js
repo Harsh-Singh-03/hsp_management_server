@@ -5,6 +5,7 @@ const doctors_repo = require('../repos/doctors.repo');
 const mail_template = require('../utilities/mail-template');
 const sendEmail = require('../utilities/mail');
 const crypto = require('crypto');
+const review_repo = require('../repos/review.repo');
 require('dotenv/config')
 
 class doctorContoller {
@@ -47,10 +48,31 @@ class doctorContoller {
                     req.body.experience = Number(req.body.experience);
                     if (req?.user && req?.user?.role === 'admin') {
                         req.body.status = 'approved'
+                        req.body.isEmailVerified = true
                     }
                     let saveUser = await Doctor.create(req.body);
+
                     if (!_.isEmpty(saveUser)) {
-                        res.status(200).send({ success: true, message: 'Doctor Registration Successful', data: saveUser });
+                        if(!saveUser.isEmailVerified){
+                            const token = crypto.randomBytes(32).toString("hex")
+                            saveUser.email_verification_token = token
+                            await saveUser.save()
+    
+                            const redirect_url = req.body.redirect || process.env.DOMAIN
+                
+                            const url = `${redirect_url}/verify-email/doctor/${saveUser._id}/${token}`
+                            console.log(url)
+                            const emailContent = mail_template.email_verification(saveUser, url);
+                
+                            const isSend = await sendEmail(saveUser.email, "Email Verification", emailContent)
+                            if(isSend){
+                                res.status(200).send({ success: true, message: 'Verification email sent successfully. Please check your inbox.' });
+                            }else{
+                                res.status(500).send({ success: false, message: 'Failed to send verification email' });
+                            }
+                        }else{
+                            res.status(200).send({ success: true, data: saveUser, message: 'Doctor Registration Successful' });
+                        }
                     }
                     else {
                         res.status(400).send({ success: false, data: {}, message: 'Doctor Registration Unsuccessful' });
@@ -191,6 +213,67 @@ class doctorContoller {
         }
     }
 
+    async changePassword(req, res) {
+        try {
+            let userInfo = await Doctor.findById(req.user._id);
+            if (!bcrypt.compare(req.body.password, userInfo.password)) {
+                res.status(400).send({ success: false, message: 'Wrong Current Password' });
+            }
+            const salt = await bcrypt.genSalt(10)
+            const securePass = await bcrypt.hash(req.body.new_password, salt);
+
+            let updatePassword = await Doctor.findByIdAndUpdate(req.user._id, { password: securePass });
+            if (!_.isEmpty(updatePassword)) {
+                res.status(200).send({ success: true, data: updatePassword, message: 'Password updated successfully' });
+            }
+            else {
+                res.status(400).send({ success: false, message: 'Password could not be updated' });
+            }
+        } catch (e) {
+            res.status(500).send({ success: false, message: e.message });
+        }
+    };
+
+    async email_verify_req(req, res){
+        try {
+            const saveUser = await Doctor.findById(req.user._id)
+            const token = crypto.randomBytes(32).toString("hex")
+            saveUser.email_verification_token = token
+            await saveUser.save()
+
+            const redirect_url = req.body.redirect || process.env.DOMAIN
+
+            const url = `${redirect_url}/verify-email/doctor/${saveUser._id}/${token}`
+
+            const emailContent = mail_template.email_verification(saveUser, url);
+
+            const isSend = await sendEmail(saveUser.email, "Email Verification", emailContent)
+            if(isSend){
+                res.status(200).send({ success: true, message: 'Verification email sent successfully. Please check your inbox.' });
+            }else{
+                res.status(500).send({ success: false, message: 'Failed to send verification email' });
+            }
+        } catch (error) {
+            res.status(500).send({ success: false, message: error.message });
+        }
+    }
+
+    async verify_email(req, res) {
+        try {
+            const userInfo = await Doctor.findOne({ _id: req.body.id, email_verification_token: req.body.token });
+            if(!_.isEmpty(userInfo) && userInfo._id){
+                userInfo.isEmailVerified = true;
+                userInfo.email_verification_token = null;
+                await userInfo.save()
+                res.status(200).send({success: true, message: 'Email verified successfully'});
+            }else{
+                res.status(404).send({ success: false, message: 'User Not Found' });
+            }
+        } catch (error) {
+            res.status(500).send({ success: false, message: 'Error while verifying' })
+        }
+    };
+
     async analytics(req, res) {
         try {
             const analytics = await doctors_repo.get_analytics(req)
@@ -200,6 +283,19 @@ class doctorContoller {
             res.send({ success: true, message: 'Analytics fetched successfully', data: analytics || {} });
         } catch (err) {
             res.status(500).send({ success: false, data: {}, message: err?.message })
+        }
+    };
+
+    async reviewList(req, res){
+        try {
+            const rev_list = await review_repo.list(req)
+            if (rev_list){
+                return res.status(200).send({ success: true, message: 'Reviews fetched successfully', data: rev_list });
+            }else{
+                return res.status(404).send({ success: false, message: 'No reviews found' });
+            }
+        } catch (error) {
+            res.status(500).send({ success: false, message: error.message });
         }
     }
 }

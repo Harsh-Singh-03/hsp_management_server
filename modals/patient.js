@@ -9,6 +9,8 @@ const patientSchema = new mongoose.Schema({
     email: { type: String, required: [true, 'email required'], unique: true },
     password: { type: String, required: [true, 'password required'] },
     forget_pass_token: { type: String, default: null },
+    email_verification_token: { type: String, default: null },
+    isEmailVerified: { type: Boolean, default: false },
     phone: { type: String, required: true, unique: true },
     address: { type: String, default: null },
     dateOfBirth: { type: Date, default: null },

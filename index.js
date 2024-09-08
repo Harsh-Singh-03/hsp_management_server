@@ -28,6 +28,7 @@ app.use('/api', require('./routes/doctor.route'));
 app.use('/api', require('./routes/appointment.route'));
 app.use('/api', require('./routes/admin.route'));
 app.use('/api', require('./routes/files.route'));
+app.use('/api', require('./routes/support.routes'));
 
 app.listen(port, () => {
     console.log(`server is running on ${port}`)
