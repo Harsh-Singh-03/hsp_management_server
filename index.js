@@ -10,7 +10,7 @@ const app = express();
 const port = process.env.PORT || 8080;
 
 app.use(cors({
-    origin: 'http://localhost:5173',
+    origin: process.env.DOMAIN,
     optionsSuccessStatus: 200,
     credentials: true,
     methods: 'GET, POST, PUT, DELETE'
