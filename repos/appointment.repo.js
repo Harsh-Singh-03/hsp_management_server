@@ -153,15 +153,46 @@ const appointment_repo = {
                 },
                 {
                     $lookup: {
+                        from: 'doc_reviews',
+                        let: {doctorId: '$doctor', patientId: '$patient'},
+                        pipeline: [
+                            {$match: {
+                                $expr: {
+                                    $and: [
+                                        {$eq: ["$doctor", "$$doctorId" ]},
+                                        {$eq: ["$patient", "$$patientId" ]},
+                                    ]
+                                }
+                            }},
+                            {
+                                $group: {
+                                     _id: "$_id",
+                                    rating: { $first: "$rating" },
+                                    review: { $first: "$review" },
+                                    createdAt: { $first: "$createdAt" },   
+                                }
+                            }
+                        ],
+                        as: "review"
+                    }
+                },  
+                {$unwind: {
+                    path: "$review",
+                    preserveNullAndEmptyArrays: true
+                }},
+                {
+                    $lookup: {
                         from: "doctors",
                         localField: "doctor",
                         pipeline: [
                             {
                                 $group: {
-                                     _id: "$_id",
-                                     name: { $first: "$name" },
-                                     phone: { $first: "$phone" },
-                                     profile_image: { $first: "$profile_image" },
+                                    _id: "$_id",
+                                    name: { $first: "$name" },
+                                    phone: { $first: "$phone" },
+                                    avg_rating: { $first: '$avg_rating' },
+                                    total_rating: { $first: '$total_rating'},
+                                    profile_image: { $first: "$profile_image" },
                                 }
                             }
                         ],
@@ -203,9 +234,10 @@ const appointment_repo = {
                         pipeline: [
                             {
                                 $group: {
-                                     _id: "$_id",
-                                     status: {$first: "$status"},
-                                     remarks: {$first: "$remarks"}
+                                    _id: "$_id",
+                                    status: {$first: "$status"},
+                                    remarks: {$first: "$remarks"},
+                                    createdAt: {$first: "$createdAt"}
                                 }
                             }
                         ],
@@ -224,6 +256,7 @@ const appointment_repo = {
                         departmentId: { $first: "$department._id" },
                         doctor: { $first: "$doctor" },
                         patient: { $first: "$patient" },
+                        review: {$first: "$review" },
                         from: { $first: "$from" },
                         to: { $first: "$to" },
                         reason: { $first: "$reason" },

@@ -3,6 +3,7 @@ const patient = require('../controllers/patient');
 const checkAuth = require('../utilities/auth');
 const appointment = require('../controllers/appointment');
 const doctor = require('../controllers/doctor');
+const review = require('../controllers/review');
 const router = express.Router()
 
 router.get('/patient/analytics', checkAuth.patient, patient.analytics)
@@ -18,6 +19,7 @@ router.post('/patient/appointment/list', checkAuth.patient, appointment.appointm
 router.post('/patient/appointment/create', checkAuth.patient, appointment.newAppointment)
 router.get('/patient/appointment/detail/:id', checkAuth.patient, appointment.appointment_details)
 router.post('/patient/doctor/reviews', checkAuth.patient, doctor.reviewList)
+router.post("/doctor/review/add", checkAuth.patient, review.addReview)
 router.post('/patient/validate', checkAuth.patient, (req, res) => {
     res.status(200).json({
         message: `Welcome ${req.user.name}`,

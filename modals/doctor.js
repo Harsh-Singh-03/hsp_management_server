@@ -9,6 +9,8 @@ const DoctorSchema = new mongoose.Schema({
     phone: { type: String, required: [true, 'phone required'], unique: true },
     forget_pass_token: { type: String, default: null },
     email_verification_token: { type: String, default: null },
+    avg_rating: { type: Number, default: 0 },
+    total_rating: { type: Number, default: 0 },
     isEmailVerified: { type: Boolean, default: false },
     specialization: {  type: mongoose.Schema.Types.ObjectId, ref: 'Department', index: true, required: [true, 'specialization required'] },
     departments: {  type: [mongoose.Schema.Types.ObjectId], ref: 'Department', index: true, default: [] },
