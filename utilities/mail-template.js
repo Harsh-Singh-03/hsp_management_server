@@ -1,5 +1,7 @@
+require('dotenv/config')
+
 const mail_template = {
-    forget_pass: ( user, url ) => {
+    forget_pass: (user, url) => {
         return `
             <!DOCTYPE html>
             <html>
@@ -99,7 +101,7 @@ const mail_template = {
             </html>
         `;
     },
-    email_verification: ( user, url ) => {
+    email_verification: (user, url) => {
         return `
             <!DOCTYPE html>
             <html>
@@ -199,7 +201,7 @@ const mail_template = {
             </html>
         `;
     },
-    support: ( user, remarks ) => {
+    support: (user, remarks) => {
         return `
             <!DOCTYPE html>
             <html>
@@ -298,6 +300,194 @@ const mail_template = {
             </html>
         `;
     },
+    patient_appointment: (user, appointmentDetails, doctor, text) => {
+        const date = appointmentDetails?.from || appointmentDetails?.createdAt || null
+        const appointmentTime = date ? date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true // For AM/PM format
+        }) : null;
+        console.log(appointmentTime)
+        return `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Appointment Request Success</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                background-color: #f4f4f4;
+                margin: 0;
+                padding: 0;
+              }
+              .container {
+                width: 100%;
+                padding: 20px;
+                background-color: #ffffff;
+                max-width: 600px;
+                margin: 50px auto;
+              }
+              .header {
+                background-color: #168f9f;
+                color: #ffffff;
+                text-align: center;
+                padding: 20px;
+              }
+              .content {
+                padding: 20px;
+                color: #333333;
+              }
+              .content h1 {
+                font-size: 24px;
+              }
+              .content p {
+                font-size: 16px;
+                line-height: 1.6;
+              }
+              .footer {
+                text-align: center;
+                padding: 20px;
+                font-size: 12px;
+                color: #666666;
+              }
+             .content ul li {
+                font-size: 16px;
+                margin-bottom: 10px;
+            }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h2>Hospitality</h2>
+                <h1>Appointment Request Success</h1>
+              </div>
+              <div class="content">
+                <h1>Hello, ${user.name}</h1>
+                <p>${text}</p>
+                <ul>
+                  <li><strong>Ref:</strong> ${appointmentDetails?.ref}</li>
+                  ${date && (
+                `<li><strong>Date:</strong> ${date?.toDateString()}</li>`
+            )}
+                  ${appointmentTime && (
+                `<li><strong>Time:</strong> ${appointmentTime}</li>`
+            )}
+                  <li><strong>Status:</strong> ${appointmentDetails?.status}</li>
+                  ${doctor && doctor?.name && (
+                `<li><strong>Doctor:</strong> Dr. ${doctor?.name}</li>`
+            )}
+                  <li><strong>Reason:</strong>${appointmentDetails?.reason}</li>
+                </ul>
+                <p><a href="${process.env.DOMAIN}/#/patient" class="button" target="_blank">Access your panel</a></p>
+                <p>If you need to reschedule or cancel, please contact us.</p>
+                <p>Thank you for choosing Hospitality.</p>
+              </div>
+              <div class="footer">
+                <p>&copy; ${new Date().getFullYear()} Hospitality. All rights reserved.</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+    },
+    doctor_appointment: (user, appointmentDetails, patient, text) => {
+        const date = appointmentDetails?.from || appointmentDetails?.createdAt || null
+        const appointmentTime = date ? date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true // For AM/PM format
+        }) : null;
+
+        return `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Appointment Scheduled</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                background-color: #f4f4f4;
+                margin: 0;
+                padding: 0;
+              }
+              .container {
+                width: 100%;
+                padding: 20px;
+                background-color: #ffffff;
+                max-width: 600px;
+                margin: 50px auto;
+              }
+              .header {
+                background-color: #168f9f;
+                color: #ffffff;
+                text-align: center;
+                padding: 20px;
+              }
+              .content {
+                padding: 20px;
+                color: #333333;
+              }
+              .content h1 {
+                font-size: 24px;
+              }
+              .content p {
+                font-size: 16px;
+                line-height: 1.6;
+              }
+              .content ul li {
+                font-size: 16px;
+                margin-bottom: 10px;
+              }
+              .footer {
+                text-align: center;
+                padding: 20px;
+                font-size: 12px;
+                color: #666666;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h2>Hospitality</h2>
+                <h1>New appointment appointed</h1>
+              </div>
+              <div class="content">
+                <h1>Hello, ${user.name}</h1>
+                <p>${text}</p>
+                <ul>
+                  <li><strong>Ref:</strong> ${appointmentDetails?.ref}</li>
+                  ${date && (
+                `<li><strong>Date:</strong> ${date?.toDateString()}</li>`
+            )}
+                  ${appointmentTime && (
+                `<li><strong>Time:</strong> ${appointmentTime}</li>`
+            )}
+                  <li><strong>Status:</strong> ${appointmentDetails?.status}</li>
+                  ${patient && patient?.name && (
+                `<li><strong>Patient:</strong> Dr. ${patient?.name}</li>`
+            )}
+                  <li><strong>Reason:</strong>${appointmentDetails?.reason}</li>
+                </ul>
+                <p><a href="${process.env.DOMAIN}/#/doctor" class="button" target="_blank">Access your panel</a></p>
+                <p>If you need to reschedule or cancel, please contact us.</p>
+                <p>Thank you from Hospitality.</p>
+              </div>
+              <div class="footer">
+                <p>&copy; ${new Date().getFullYear()} Hospitality. All rights reserved.</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+    },
+
+
 };
 
 module.exports = mail_template;

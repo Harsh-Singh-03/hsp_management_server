@@ -88,6 +88,8 @@ const doctors_repo = {
                         specialization: { $first: "$specialization" },
                         department: { $first: "$department" },
                         experience: { $first: "$experience" },
+                        avg_rating: { $first: "$avg_rating" },
+                        total_rating: { $first: "$total_rating" },
                         profile_image: { $first: "$profile_image" }
                     }
                 },
@@ -145,6 +147,37 @@ const doctors_repo = {
             ]);
 
             return analytics[0]
+        } catch (error) {
+            throw error;
+        }
+    },
+    top_doctor: async () => {
+        try {
+            const data = Doctor.aggregate([
+                { $match: { isDeleted: false, status: 'approved' } },
+                {$lookup: {
+                    from: 'departments',
+                    localField: 'specialization',
+                    pipeline: [
+                        { $group: { _id: "$_id", title: { $first: "$title" } } }
+                    ],
+                    foreignField: '_id',
+                    as:'specialization'
+                }}, 
+                {$unwind: '$specialization'},
+                {$group: {
+                    _id: "$_id",
+                    name: { $first: "$name" },
+                    specialization: { $first: "$specialization.title" },
+                    avg_rating: { $avg: "$avg_rating" },
+                    total_rating: { $sum: "$total_rating" },
+                    profile_image: { $first: "$profile_image" },
+                    createdAt: { $first: "$createdAt" },
+                }}, 
+                { $sort: { avg_rating: -1, total_rating: -1, createdAt: -1 } },
+            ])
+            const doctor_list = await Doctor.aggregatePaginate(data, {page: 1, limit: 10})
+            return doctor_list.docs
         } catch (error) {
             throw error;
         }

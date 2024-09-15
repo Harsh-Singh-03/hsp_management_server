@@ -30,6 +30,7 @@ router.get('/admin/overview_count', checkAuth.admin, admin.adminOverview)
 router.post('/admin/department/analytics', checkAuth.admin, admin.adminDepartmentAnalytics)
 router.post('/admin/patient/analytics', checkAuth.admin, admin.adminPatientAnalytics)
 router.post('/admin/appointment/analytics', checkAuth.admin, admin.adminAppointmentAnalytics)
+router.get('/admin/doctor/rated/list', checkAuth.admin, doctor.topRatedDoctor)
 router.post('/admin/validate', checkAuth.admin, (req, res) => {
     res.status(200).json({
         message: `Welcome ${req.user.name}`,

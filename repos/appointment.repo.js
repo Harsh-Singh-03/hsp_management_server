@@ -272,7 +272,7 @@ const appointment_repo = {
     },
     updateOne: async (field, value) => {
         try {
-            const updateAppointment = await Appointment.findOneAndUpdate(field, value, { $new: true });
+            const updateAppointment = await Appointment.findOneAndUpdate(field, value, { new: true, upsert: true }).exec()
             return updateAppointment;
         } catch (e) {
             throw e;

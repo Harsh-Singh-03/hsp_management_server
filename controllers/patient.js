@@ -202,7 +202,7 @@ class patientContoller {
 
     async updateProfile(req, res) {
         try {
-            let updateUser = await Patient.findByIdAndUpdate(req.user._id, req.body, { $new: true, $upsert: true }).exec()
+            let updateUser = await Patient.findByIdAndUpdate(req.user._id, req.body, { new: true, upsert: true }).exec()
             if (!_.isEmpty(updateUser) && updateUser._id) {
                 res.status(200).send({ success: true, data: updateUser, message: 'Profile details updated successfully' });
             }

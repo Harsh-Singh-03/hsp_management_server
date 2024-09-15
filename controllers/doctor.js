@@ -136,7 +136,7 @@ class doctorContoller {
     async updateDoctor(req, res) {
         try {
             const { id } = req.params;
-            const updatedUser = await Doctor.findByIdAndUpdate(id, req.body, { new: true });
+            const updatedUser = await Doctor.findByIdAndUpdate(id, req.body, { new: true, upsert: true }).exec();
             if (!_.isEmpty(updatedUser) && updatedUser) {
                 res.status(200).send({ success: true, message: 'Doctor Profile Updated Successfully', data: updatedUser });
             }
@@ -293,6 +293,19 @@ class doctorContoller {
                 return res.status(200).send({ success: true, message: 'Reviews fetched successfully', data: rev_list });
             }else{
                 return res.status(404).send({ success: false, message: 'No reviews found' });
+            }
+        } catch (error) {
+            res.status(500).send({ success: false, message: error.message });
+        }
+    }
+
+    async topRatedDoctor (req, res) {
+        try {
+            const doct_list = await doctors_repo.top_doctor()
+            if (doct_list.length > 0){
+                return res.status(200).send({ success: true, message: 'Doctor fetched successfully', data: doct_list });
+            }else{
+                return res.status(404).send({ success: false, message: 'No doctor found' });
             }
         } catch (error) {
             res.status(500).send({ success: false, message: error.message });
